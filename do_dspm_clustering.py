@@ -37,7 +37,7 @@ data_array=np.load(os.path.join(dspm_dir,'stc_array.npy'))
 # Send dSPM outputs to surface
 
 os.chdir(utilities_dir)
-subprocess.run(("./get_new_stc2gii.sh {} {} {} {} {}".format(subj,fs_dir,dspm_dir,trans_file,utilities_dir)),shell=True)
+subprocess.run(("./get_new_stc2gii.sh {} {} {} {}".format(subj,fs_dir,dspm_dir,trans_file)),shell=True)
 
 #====================================================================================================================
 # Create clusters
