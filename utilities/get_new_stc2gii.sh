@@ -5,7 +5,7 @@ if [ "$#" -eq 4 ]; then
 	dspm_dir=$3 # Set direcotry containing subject's dSPM outputs
 	trans_file=$4 # Set path to transformation matrix
 else
-        echo -e "\033[0;35m++ usage: $0 subj ++\033[0m"
+        echo -e "\033[0;35m++ usage: $0 subj freesurfer_dir dspm_dir trans_file_path ++\033[0m"
 	exit 1
 fi
 
