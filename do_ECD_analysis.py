@@ -21,24 +21,7 @@ project_dir = '' # Folder with patient's MRI, and to write out project files
 #====================================================================================================================
 # DEFINE FUNCTIONS
 
-def extract_dipole_per_metric(dipole_dframe,metric=None):
-    if metric == 'first':
-        first_idx=dipole_dframe['fit_seq_idx'].idxmin()
-        dipole_dframe=dipole_dframe[first_idx:(first_idx+1)]
-    elif metric == 'moving':
-        dipole_dframe=dipole_dframe
-    return dipole_dframe
-
-def get_temp_dataframe(index):
-    tmp_dip_disp=dip_disp.copy(deep=True)
-    tmp_dip_disp
-    for ind in tmp_dip_disp.index:
-        seq_num=tmp_dip_disp['fit_seq_idx'][ind]
-        if seq_num != index:
-            tmp_dip_disp=tmp_dip_disp.drop(ind,axis=0)
-    return tmp_dip_disp
-
-def write_dipole_overlays(dipole_mat=None, mri_dir=None, open_afni=False, type=None, index=None, mark=None):
+def write_dipole_overlays(dipole_mat=None, mri_dir=None, open_afni=False, index=None, mark=None):
     # Set Filenames
     os.chdir(mri_dir)
     mri_input_filename=os.path.join(mri_dir,'ortho+orig.HEAD')
@@ -48,18 +31,12 @@ def write_dipole_overlays(dipole_mat=None, mri_dir=None, open_afni=False, type=N
     # Dipole NIFTI image
     dipole_nii_output=nb.Nifti1Image(dipole_mat, mri.affine, header=mri.header)
     dipole_nii_output.to_filename(dipole_mri_output_filename)
-    if type == 'moving':
-        base='_dipole+orig'
-        name=str(index)+base
-        # Generate an afni readable file
-        subprocess.run(('3dcopy {} {}'.format('',name)).split(' '))
-        subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, name).split(' '))
-    else:
-        # Generate an afni readable file
-        name=type+'_'+mark+'_dipole+orig'
-        subprocess.run('3dcopy {} dipole+orig'.split(' '))
-        subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, os.path.join(mri_dir,name)).split(' ')) #Change the data to afni format
-        os.remove(dipole_mri_output_filename)
+    base='_dipole+orig'
+    name=str(index)+base
+    # Generate an afni readable file
+    subprocess.run(('3dcopy {} {}'.format(dipole_mri_output_filename,name)),shell=True)
+    os.remove('DIPOLE_NII.nii')
+    # subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, name).split(' '))
 
 def transform_dipole_LPI_to_voxel(mri_dir,final_dipole_dframe):
     '''The MRI dataset is in LPI space Use the inverse affine matrix to map the LPI dipoles to the voxel coordinates'''
@@ -87,12 +64,6 @@ def vox_fill(i,j,k, fill_vox=None):
     else:
         fill_vox=int(fill_vox)
         return slice(i-fill_vox, i+fill_vox,1),slice(j-fill_vox, j+fill_vox,1), slice(k-fill_vox, k+fill_vox,1) 
-
-def initialize_and_fill_new_dframe(error,metric):
-    tmp_dip_display=pd.DataFrame(columns=dipole_dframe.columns)
-    tmp_dip_display=extract_dipole_per_metric(dipole_dframe,metric=metric)
-    tmp_dip_display=tmp_dip_display[tmp_dip_display['Err(%)']<(100-int(error))]
-    return tmp_dip_display
 
 def get_dipole_idx(label):
     '''Return the dipole index from file fits
@@ -182,12 +153,11 @@ if not os.path.exists(project_dir):
 out_df.to_csv(os.path.join(project_dir,'dipole_timing.txt'),header=True)
 
 # Write out dipoles for analysis
-metrics="first","peak"
-for metric in metrics:
+for metric in "first","peak":
     time=out_df[metric][0]
     for a in np.arange(0,len(dipole_dframe)):
         test=float(dipole_dframe['Sample'][a])
         if test == time:
             dip_disp=dipole_dframe[a:(a+1)]
             dipole_mat=transform_dipole_LPI_to_voxel(project_dir,final_dipole_dframe=dip_disp)
-            write_dipole_overlays(dipole_mat=dipole_mat,mri_dir=project_dir,open_afni=False,index=[a],mark='avgspike',type=metric)
+            write_dipole_overlays(dipole_mat=dipole_mat,mri_dir=project_dir,open_afni=False,index=metric,mark='avgspike')
