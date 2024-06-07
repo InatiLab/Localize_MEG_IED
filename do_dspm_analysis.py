@@ -1,13 +1,10 @@
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import mne
 mne.set_log_level(False)
 import mne.channels
 from mne.preprocessing import ICA
-import sys
 
 # User inputs
 subj = '' # Put subject code here
@@ -54,8 +51,6 @@ raw.filter(5,50)
 events, event_id = mne.events_from_annotations(raw) # adding in events from marker files, if no events exist will get error
 raw.plot(clipping = None, n_channels = 50) # plot to remove channels - manually select them
 out_text=input("Check raw for bad channels and press enter when finished.")
-if out_text != '':
-    sys.exit(1)
 
 # Store bad meg channels that were manually chosen above into bad_meg structure for future reference
 if len(raw.info['bads']) >= 1:
@@ -75,8 +70,6 @@ ica.fit(raw,
 # Plot ICA components and manually select components containing phyiologic or other artifact 
 ica.plot_sources(raw,title='ICA') # plots ICA component activitations as time series 
 out_text=input('Select the components that you wish to exclude from analysis and type enter when finished.')
-if out_text != '':
-    sys.exit(1)
 ica.apply(raw)
 
 # Read in previously created BEM model; looks for folder named 'bem' within this folder that contains all bem model data
@@ -114,8 +107,6 @@ src = forward['src']
 # Manually check alignment of model before computing outputs
 mne.viz.plot_alignment(raw.info, trans=trans_file, subject=subj, subjects_dir=fs_dir, surfaces='outer_skin', show_axes=True, dig=True, eeg=[], meg='sensors',coord_frame='meg')
 out_text = input('If bem looks good, hit return.')
-if out_text != '':
-    sys.exit(1)
 
 # Create spike epochs from 1.5 seconds before your mark to 0.5 seconds after the marked peak
 epochs = mne.Epochs(raw, 
@@ -132,8 +123,6 @@ epochs = mne.Epochs(raw,
 # Inspect all spiking epochs and click to remove if they contain significant artifact
 epochs.plot()
 out_text = input('Remove any bad epochs and hit return when finished.')
-if out_text != '':
-    sys.exit()
 
 # Create baseline epochs from 1.5 seconds before your mark to 0.5 seconds after the marked peak
 baseline_epochs = mne.Epochs(raw, 
