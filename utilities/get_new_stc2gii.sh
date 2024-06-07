@@ -71,7 +71,7 @@ for hemi in ${sides[@]}; do
 
     # Create a python-readable table from the results of the stc2gii_hack conversion
     cd $utilities_dir
-    python mne2suma.py $subj $dspm_dir $hemi
+    python mne2suma.py "$subj" "$dspm_dir" "$hemi"
     
     # Clean up directory
     cd $dspm_meg_dir 
