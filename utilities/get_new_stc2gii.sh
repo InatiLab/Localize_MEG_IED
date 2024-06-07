@@ -1,21 +1,16 @@
-# Input variables
+# Input variables and paths
 if [ "$#" -eq 4 ]; then
-    subj=$1 # Set patient of interest here
-    fs_dir=$2 # Set directory containing subject's Freesurfer folders
-    dspm_dir=$3 # Set direcotry containing subject's dSPM outputs
-    trans_file=$4 # Set path to transformation matrix
+	subj=$1 # Set patient of interest here
+	fs_dir=$2 # Set directory containing subject's Freesurfer folders
+	dspm_dir=$3 # Set direcotry containing subject's dSPM outputs
+	trans_file=$4 # Set path to transformation matrix
 else
-	echo -e "\033[0;35m++ usage: $0 subj ++\033[0m"
+        echo -e "\033[0;35m++ usage: $0 subj ++\033[0m"
 	exit 1
 fi
 
-# Set paths
-fs_dir=''  # Set directory containing subject's Freesurfer folders
-dspm_dir='' # Set direcotry containing subject's dSPM outputs
-trans_file='' # Set path to transformation matrix
-
-scripts_dir=$(pwd)
-utilities_dir=${scripts_dir}/utilities
+# Set utilities directory
+utilities_dir=$(pwd)
 
 #=============================================================================================
 # START SCRIPT
