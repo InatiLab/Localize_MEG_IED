@@ -9,7 +9,7 @@ from read_dip_results import *
 subj='' # Put your subject code here
 run='' # Put the path to the subject's MEG run here
 
-# Analysis window and accepted dipole fit error  
+# Set analysis window and accepted dipole fit error  
 latency=25
 error=70
 
@@ -36,7 +36,6 @@ def write_dipole_overlays(dipole_mat=None, mri_dir=None, open_afni=False, index=
     # Generate an afni readable file
     subprocess.run(('3dcopy {} {}'.format(dipole_mri_output_filename,name)),shell=True)
     os.remove('DIPOLE_NII.nii')
-    # subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, name).split(' '))
 
 def transform_dipole_LPI_to_voxel(mri_dir,final_dipole_dframe):
     '''The MRI dataset is in LPI space Use the inverse affine matrix to map the LPI dipoles to the voxel coordinates'''
@@ -76,10 +75,8 @@ def get_dipole_idx(label):
 #===================================================================================================
 # START SCRIPT
 
-# Rename t1
-cmd="3dcopy {}/t1.nii {}/ortho+orig"
-cmd=cmd.format(project_dir,project_dir)
-subprocess.run(cmd,shell=True)
+# Get t1 NIFTI to AFNI-readable format
+subprocess.run(("3dcopy {}/t1.nii {}/ortho+orig".format(project_dir,project_dir)),shell=True)
 
 # Make averaged run
 ctf_avg_dir = (ctf_run_dir.strip('.ds'))+'-avg.ds'
@@ -110,9 +107,7 @@ for file in os.listdir(os.getcwd()):
     factor=int(sample_rate/600)
     # If the file needs to be resampled to 600, create a new resampled dataset
     if factor != 1 and not os.path.exists(resampled_file):
-        cmd="newDs -resample {} {} {}"
-        cmd=cmd.format(factor,ctf_avg_dir,resampled_file)
-        subprocess.run(cmd,shell=True)
+        subprocess.run(("newDs -resample {} {} {}".factor,ctf_avg_dir,resampled_file),shell=True)
 
 # If we created a resampled file, reset the averaged directory to the resampled file
 if os.path.exists(resampled_file):
@@ -125,11 +120,8 @@ if os.path.exists(resampled_file):
 # subprocess.run(cmd,shell=True)
 
 # Write dipole over the course of the selected latency of the avgspike mark
-dipole='avgspike'
 os.chdir(ctf_avg_dir)
-cmd="dfit -a -z -b -{} -e 0.001 -i 4 -h {}/default.hdm -f {}/default.dip -p /home/jstout/processing.cfg -m avgspike {} avgspike.dip"
-cmd=cmd.format((latency/1000),ctf_avg_dir,ctf_avg_dir,ctf_avg_dir)
-subprocess.run(cmd,shell=True)
+subprocess.run(("dfit -a -z -b -{} -e 0.001 -i 4 -h {}/default.hdm -f {}/default.dip -p /home/jstout/processing.cfg -m avgspike {} avgspike.dip".format((latency/1000),ctf_avg_dir,ctf_avg_dir,ctf_avg_dir)),shell=True)
 
 # Assemble a dipole dataframe of position and error over the moving dipole fit
 os.chdir(ctf_avg_dir)
@@ -148,8 +140,6 @@ else:
 
 # Write out a text file containing the selected dipole timing
 out_df=pd.DataFrame({"dipole":'avg',"first":first_lat,"peak":peak_lat},index=[0])
-if not os.path.exists(project_dir):
-    os.mkdir(project_dir)
 out_df.to_csv(os.path.join(project_dir,'dipole_timing.txt'),header=True)
 
 # Write out dipoles for analysis
