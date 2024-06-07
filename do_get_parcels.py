@@ -17,17 +17,13 @@ t1_dir = '' # Set path to project t1; ideally, already-axialized scan used for f
 project_dir = '' # Set path to project directory
 
 if not os.path.exists(os.path.join(t1_dir,'anat+orig.HEAD')):
-    cmd="3dcopy t1.nii {}/t1+orig"
-    cmd = cmd.format(project_dir)
-    subprocess.run(cmd,shell=True)
+    subprocess.run(("3dcopy t1.nii {}/t1+orig".format(project_dir)),shell=True)
 
 #========================================================================================================================================
 # Get extra freesurfer outputs and parcellations -- only run after recon-all
 
 # Create SUMA directory
-cmd = "@SUMA_Make_Spec_FS -NIFTI -sid {} -fspath {} -make_rank_dsets -extra_fs_dsets -no_ld"
-cmd = cmd.format(subj,subj_fs_dir)
-subprocess.run(cmd,shell=True)
+subprocess.run(("@SUMA_Make_Spec_FS -NIFTI -sid {} -fspath {} -make_rank_dsets -extra_fs_dsets -no_ld".format(subj,subj_fs_dir)),shell=True)
 
 # Get paths to subsequent files
 surfvol_file = os.path.join(subj_fs_dir,'SUMA',subj+'_SurfVol.nii')
@@ -50,13 +46,11 @@ os.chdir(os.path.join(subj_fs_dir,'SUMA'))
 for hemi in "lh","rh":
     # Get the label file and convert it to a 1D file
     file=os.path.join(files_dir,'std.'+std_mesh+'.'+hemi+'.Schaefer2018_400Parcels_7Networks_order.smooth3mm.lbl.niml.dset') # We are only providing the file for the 141 standard mesh. Please email if you need other files.
-    convert_cmd="ConvertDset -o_1D -input {} -prefix {}/{}_schaefer_parcels.1D"
-    convert_cmd=convert_cmd.format(file,os.path.join(subj_fs_dir,'SUMA'),hemi)
+    convert_cmd="ConvertDset -o_1D -input {} -prefix {}/{}_schaefer_parcels.1D".format(file,os.path.join(subj_fs_dir,'SUMA'),hemi)
     subprocess.run(convert_cmd,shell=True)
 
     # Edit files to be AFNI-readable by removing excess rows
-    filename=hemi+'_schaefer_parcels.1D.dset'
-    file=pd.read_csv(os.path.join(subj_fs_dir,'SUMA',filename),delim_whitespace=True,skiprows=5,nrows=198812,header=None)
+    file=pd.read_csv(os.path.join(subj_fs_dir,'SUMA',hemi+'_schaefer_parcels.1D.dset'),delim_whitespace=True,skiprows=5,nrows=198812,header=None)
     file.to_csv(os.path.join(subj_fs_dir,'SUMA','final_'+filename),header=None,index=False,sep=' ')
 
     # Send the parcels into the volume using @surf_to_vol_spackle
@@ -69,13 +63,10 @@ for hemi in "lh","rh":
     subprocess.run(surfvol_cmd,shell=True)
 
 # Combine the two halves; start with right hemisphere at parcel 200 as they are both labeled 1-200 in the base file
-combine_cmd="3dcalc -a temp_lh_schaefer_parcels.nii -b temp_rh_schaefer_parcels.nii -expr '(step(a)*a)+(step(b)*(b+200))' -prefix schaefer_parcels+orig"
-subprocess.run(combine_cmd,shell=True)
+subprocess.run(("3dcalc -a temp_lh_schaefer_parcels.nii -b temp_rh_schaefer_parcels.nii -expr '(step(a)*a)+(step(b)*(b+200))' -prefix schaefer_parcels+orig"),shell=True)
 
-# Clean up folder
+# Clean up folder by removing each half
 for hemi in 'lh','rh':
-    # os.remove(os.path.join(subj_fs_dir,'SUMA','final_'+hemi+'_schaefer_parcels.1D.dset'))
-    # os.remove(os.path.join(subj_fs_dir,'SUMA',hemi+'_schaefer_parcels.1D.dset'))
     os.remove(os.path.join(subj_fs_dir,'SUMA','temp_'+hemi+'_schaefer_parcels.nii'))
 
 # Write a new table that contains the information for the header
@@ -104,10 +95,8 @@ with open('final_annot.niml.lt','w') as new_file:
         new_file.write(new_line)
     new_file.write("\n</VALUE_LABEL_DTABLE>")
 
-# Write the parcel key into the file header 
-refit_cmd="3drefit -labeltable {} {}"
-refit_cmd=refit_cmd.format('final_annot.niml.lt','schaefer_parcels+orig')
-subprocess.run(refit_cmd,shell=True)
+# Write the parcel key into the file header
+subprocess.run(("3drefit -labeltable {} {}".format('final_annot.niml.lt','schaefer_parcels+orig')),shell=True)
 
 ## Get parcel value for every voxel to a text file, if desired
 # cmd="3dmaskdump -mask schaefer_parcels+orig schaefer_parcels+orig > schaefer_parcels.txt"
