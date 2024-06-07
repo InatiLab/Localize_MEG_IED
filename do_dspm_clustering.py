@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 import pandas as pd
 import shutil
@@ -8,8 +7,6 @@ from sh import gunzip
 
 # Set variables 
 subj = '' # Set subject code here 
-run = '' # Set path to MEG run of interest here
-# thresh = '' # Set to 'one' or 'multi,' depending on whether you want the threshold set at the first timepoint or taken at the peak as well
 
 # Set paths
 fs_dir = '' # Set path to subject's Freesurfer reconstruction here
@@ -40,9 +37,7 @@ data_array=np.load(os.path.join(dspm_dir,'stc_array.npy'))
 # Send dSPM outputs to surface
 
 os.chdir(utilities_dir)
-cmd="./get_new_stc2gii.sh {} {} {} {} {}"
-cmd=cmd.format(subj,fs_dir,dspm_dir,trans_file,utilities_dir)
-subprocess.run(cmd,shell=True)
+subprocess.run(("./get_new_stc2gii.sh {} {} {} {} {}".format(subj,fs_dir,dspm_dir,trans_file,utilities_dir)),shell=True)
 
 #====================================================================================================================
 # Create clusters
@@ -98,9 +93,7 @@ for a in 'first','peak':
         subprocess.run(smooth_cmd,shell=True)
 
         # Convert the values to a 1D for each hemisphere
-        cmd="ConvertDset -o_1D -input {}/tp_smoothed_{}.niml.dset -prefix {}_tp_smoothed"
-        cmd=cmd.format(out_dir,hemi,hemi)
-        subprocess.run(cmd,shell=True)
+        subprocess.run(("ConvertDset -o_1D -input {}/tp_smoothed_{}.niml.dset -prefix {}_tp_smoothed".format(out_dir,hemi,hemi)),shell=True)
         
         # Remove the index column so AFNI can read the file
         nodes=pd.read_csv(os.path.join(fs_dir,'SUMA',hemi+'_tp_smoothed.1D.dset'),skiprows=5,header=None,sep=' ',names=['val'],nrows=36002)
@@ -122,9 +115,7 @@ for a in 'first','peak':
                 shutil.move(file,os.path.join(out_dir,file))
         
         #Expand into the volume to remove any holes from 3dSurf2Vol
-        cmd="@ROI_modal_grow -input {}/temp_out.nii -outdir {}/temp_grow -niters 2 -mask {}/temp_out.nii -prefix tmp"
-        cmd=cmd.format(out_dir,out_dir,out_dir)
-        subprocess.run(cmd,shell=True)
+        subprocess.run(("@ROI_modal_grow -input {}/temp_out.nii -outdir {}/temp_grow -niters 2 -mask {}/temp_out.nii -prefix tmp".format(out_dir,out_dir,out_dir),shell=True)
         
         # Only take the level 2 expansion; remove all other files
         for file in os.listdir(os.path.join(out_dir,'temp_grow')):
@@ -162,11 +153,4 @@ for a in 'first','peak':
     percentile=np.nanpercentile([combined],[95])[0]
 
     # Create clusters from the volumetric dSPM mask, with the chosen percentile as the threshold
-    cmd="3dclust -savemask {} -1clip {} 5 75 {}"
-    cmd=cmd.format(os.path.join(out_dir,a+'_clust.nii'),percentile,os.path.join(out_dir,a+'.nii'))
-    subprocess.run(cmd,shell=True)
-
-# Clean up directory
-for x in os.listdir(out_dir):
-    if '.txt' in x and not 'dipole_timing' in x:
-        os.remove(x)
+    subprocess.run(("3dclust -savemask {} -1clip {} 5 75 {}".format(os.path.join(out_dir,a+'_clust.nii'),percentile,os.path.join(out_dir,a+'.nii'))),shell=True)
