@@ -6,7 +6,7 @@ import pandas as pd
 import subprocess
 from read_dip_results import *
 
-subj='' #Put your subject code here
+subj='' # Put your subject code here
 run='' # Put the path to the subject's MEG run here
 
 # Analysis window and accepted dipole fit error  
@@ -15,8 +15,8 @@ error=70
 
 # Set main directory here
 ctf_run_dir = '' # Put path to CTF .ds file here
-ctf_dir = ctf_run_dir.rstrip(('/'+(ctf_run_dir.split('/')[-1])))
-project_dir = '' # Put path to where you would like the dSPM script to read selected times from
+ctf_dir = ctf_run_dir.split('/'+(ctf_run_dir.split('/')[-1]))[0] # Get directory with CTF file in it
+project_dir = '' # Folder with patient's MRI, and to write out project files
 
 #====================================================================================================================
 # DEFINE FUNCTIONS
@@ -39,23 +39,23 @@ def get_temp_dataframe(index):
     return tmp_dip_disp
 
 def write_dipole_overlays(dipole_mat=None, mri_dir=None, open_afni=False, type=None, index=None, mark=None):
-    #Set Filenames
+    # Set Filenames
     os.chdir(mri_dir)
     mri_input_filename=os.path.join(mri_dir,'ortho+orig.HEAD')
     dipole_mri_output_filename='DIPOLE_NII.nii'
-    #Load MRI header
+    # Load MRI header
     mri=nb.load(mri_input_filename)
-    #Dipole Nifti image
+    # Dipole NIFTI image
     dipole_nii_output=nb.Nifti1Image(dipole_mat, mri.affine, header=mri.header)
     dipole_nii_output.to_filename(dipole_mri_output_filename)
     if type == 'moving':
         base='_dipole+orig'
         name=str(index)+base
-        #Generate an afni readable file
+        # Generate an afni readable file
         subprocess.run(('3dcopy {} {}'.format('',name)).split(' '))
         subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, name).split(' '))
     else:
-        #Generate an afni readable file
+        # Generate an afni readable file
         name=type+'_'+mark+'_dipole+orig'
         subprocess.run('3dcopy {} dipole+orig'.split(' '))
         subprocess.run('3dcopy {} {}'.format(dipole_mri_output_filename, os.path.join(mri_dir,name)).split(' ')) #Change the data to afni format
@@ -75,7 +75,7 @@ def transform_dipole_LPI_to_voxel(mri_dir,final_dipole_dframe):
         x,y,z=np.round(x),np.round(y),np.round(z)
         i,j,k=np.sum(affine_inv*(x,y,z,1),axis=1)[0:3]
         dipole_matrix[vox_fill(i,j,k, fill_vox=4)]+=1
-    #May or may not be necessary to expand dimensions to 4
+    # May or may not be necessary to expand dimensions to 4
     dipole_matrix=np.expand_dims(dipole_matrix,axis=3)
     return dipole_matrix
 
@@ -102,38 +102,16 @@ def get_dipole_idx(label):
     else:
         return str(label.split('.')[0])
 
-def find_first_lat(dipole_dframe,error):
-    end=15
-    if len(dipole_dframe) == (end+2):
-        dipole_dframe=dipole_dframe[:-1]
-    first_idx=((dipole_dframe[dipole_dframe['fit_seq_idx']==0]).index.to_list())[0]
-    for ind in np.flip(np.arange(first_idx,first_idx+end)):
-        err=dipole_dframe['Err(%)'][ind]
-        if err > 30:
-            if ind == (first_idx+(end-1)):
-                start=np.nan
-            else:
-                start=(ind+1)
-                break
-        else:
-            if ind == first_idx:
-                start=ind
-    if 'start' not in locals():
-        first_lat=np.nan
-    elif np.isnan(start) == True:
-        first_lat=np.nan
-    elif start == (end-1):
-        first_lat=np.nan
-    else:
-        first_lat=(dipole_dframe['Sample'][start])
-    return first_lat
-
 #===================================================================================================
 # START SCRIPT
 
+# Rename t1
+cmd="3dcopy {}/t1.nii {}/ortho+orig"
+cmd=cmd.format(project_dir,project_dir)
+subprocess.run(cmd,shell=True)
+
 # Make averaged run
-outds_name = (ctf_run_dir.strip('.ds'))+'-avg.ds'
-ctf_avg_dir = os.path.join(ctf_dir,outds_name)
+ctf_avg_dir = (ctf_run_dir.strip('.ds'))+'-avg.ds'
 os.chdir(ctf_dir)
 
 # Write average spike from all epochs
@@ -146,7 +124,7 @@ cmd="addMarker -n avgspike -t 0.0 {}"
 cmd=cmd.format(ctf_avg_dir)
 subprocess.run(cmd,shell=True)
 
-#Check if file needs to be resampled to 600 Hz
+# Check if file needs to be resampled to 600 Hz
 os.chdir(ctf_avg_dir)
 resampled_file=ctf_avg_dir.strip('-avg.ds')+'_resampled-avg.ds'
 for file in os.listdir(os.getcwd()):
@@ -188,11 +166,10 @@ dipole_dframe=read_dip_results.assemble_dipole_dframe('avgspike.dip')
 dipole_dframe['Run']=ctf_avg_dir.split('/')[7]
 dipole_dframe['Dipole_idx']=dipole_dframe.Label.apply(get_dipole_idx)
 
-# Find dipole localizations with an error above 70%
-filtered=(dipole_dframe[dipole_dframe['Err(%)']<(100-error)][0:-1]).reset_index(inplace=True)
+# Find dipole localizations with an error above 70%; get rid of sample after peak
+filtered=(dipole_dframe[dipole_dframe['Err(%)']<(100-error)][0:-1]).reset_index(inplace=False)
 if not filtered.empty == True:
-    first=15
-    first_lat=find_first_lat(dipole_dframe,(100-error))
+    first_lat=float(filtered['Sample'][0])
     peak_lat=float(((filtered)[-1:])['Sample'])
 else:
     first_lat=np.nan
